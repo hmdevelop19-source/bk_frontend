@@ -8,6 +8,7 @@ import {
 import toast from 'react-hot-toast'
 import { useSettings } from '../contexts/SettingsContext'
 import { useData } from '../contexts/DataContext'
+import api from '../lib/axios'
 
 const STATUS_CLS = {
   'Aktif': 'badge bg-teal-500/20 text-teal-300 border border-teal-500/30',
@@ -193,7 +194,7 @@ function ConfirmDelete({ siswa, onClose, onConfirm }) {
 
 export default function SiswaPage() {
   const { classes } = useSettings()
-  const { siswa, setSiswa } = useData()
+  const { siswa, refreshData } = useData()
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('Semua')
   const [filterKelas, setFilterKelas] = useState('Semua')
@@ -241,22 +242,36 @@ export default function SiswaPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  const handleAdd = (form) => {
-    const newId = Math.max(0, ...siswa.map(s => s.id)) + 1
-    setSiswa(prev => [{ ...form, id: newId, konseling: 0 }, ...prev])
-    setModalAdd(false)
-    toast.success(`Siswa ${form.nama} berhasil ditambahkan!`)
+  const handleAdd = async (form) => {
+    try {
+      await api.post('/students', form)
+      refreshData()
+      setModalAdd(false)
+      toast.success(`Siswa ${form.nama} berhasil ditambahkan!`)
+    } catch (err) {
+      toast.error('Gagal menambahkan siswa.')
+    }
   }
 
-  const handleEdit = (form) => {
-    setSiswa(prev => prev.map(s => s.id === modalEdit.id ? { ...s, ...form } : s))
-    setModalEdit(null)
-    toast.success('Data siswa berhasil diperbarui!')
+  const handleEdit = async (form) => {
+    try {
+      await api.put(`/students/${modalEdit.id}`, form)
+      refreshData()
+      setModalEdit(null)
+      toast.success('Data siswa berhasil diperbarui!')
+    } catch (err) {
+      toast.error('Gagal memperbarui data siswa.')
+    }
   }
 
-  const handleDelete = (id) => {
-    setSiswa(prev => prev.filter(s => s.id !== id))
-    toast.success('Data siswa berhasil dihapus.')
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/students/${id}`)
+      refreshData()
+      toast.success('Data siswa berhasil dihapus.')
+    } catch (err) {
+      toast.error('Gagal menghapus data siswa.')
+    }
   }
 
   const handleExport = () => {

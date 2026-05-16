@@ -23,7 +23,7 @@ export default function SettingsPage() {
     { id: 'aplikasi', label: 'Aplikasi', icon: RiPaletteLine },
   ]
 
-  const handleSave = () => toast.success('Pengaturan berhasil disimpan!')
+  const handleSave = () => toast.success('Konfigurasi berhasil diperbarui!')
 
   const handleAddClass = () => {
     if (newClass.trim() && !classes.includes(newClass.trim())) {

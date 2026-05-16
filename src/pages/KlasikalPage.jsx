@@ -7,6 +7,7 @@ import {
 import toast from 'react-hot-toast'
 import { useData } from '../contexts/DataContext'
 import { useSettings } from '../contexts/SettingsContext'
+import api from '../lib/axios'
 
 const SAMPLE_STUDENTS = [
   { id: 1, name: 'Ahmad Fauzi', nis: '2024001', status: 'Hadir' },
@@ -78,7 +79,7 @@ function JadwalKlasikalModal({ isOpen, onClose, onSave, classes }) {
 
 export default function KlasikalPage() {
   const { classes } = useSettings()
-  const { schedules, setSchedules } = useData()
+  const { schedules, refreshData } = useData()
   const [view, setView] = useState('list') // 'list' or 'attendance'
   const [activeClass, setActiveClass] = useState(null)
   const [students, setStudents] = useState(SAMPLE_STUDENTS)
@@ -101,19 +102,23 @@ export default function KlasikalPage() {
     setView('list')
   }
 
-  const handleSaveSchedule = (form) => {
-    const newSched = {
-      id: Date.now(),
-      class: form.class,
-      topic: form.topic,
-      time: form.time,
-      status: 'Terjadwal',
-      attended: 0,
-      total: form.total
+  const handleSaveSchedule = async (form) => {
+    try {
+      await api.post('/schedules', {
+        class_name: form.class,
+        topic: form.topic,
+        time: form.time,
+        status: 'Terjadwal',
+        attended: 0,
+        total: form.total
+      })
+      
+      refreshData()
+      setModalOpen(false)
+      toast.success('Jadwal Bimbingan Klasikal baru berhasil dibuat!')
+    } catch (err) {
+      toast.error('Gagal membuat jadwal baru.')
     }
-    setSchedules([newSched, ...schedules])
-    setModalOpen(false)
-    toast.success('Jadwal Bimbingan Klasikal baru berhasil dibuat!')
   }
 
   const filteredStudents = students.filter(s => 

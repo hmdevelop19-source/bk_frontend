@@ -7,6 +7,7 @@ import {
 import toast from 'react-hot-toast'
 import { useData } from '../contexts/DataContext'
 import { useSettings } from '../contexts/SettingsContext'
+import api from '../lib/axios'
 
 function KasusModal({ isOpen, onClose, onSave, classes, defaultVisit = false }) {
   const [form, setForm] = useState({
@@ -74,21 +75,33 @@ function KasusModal({ isOpen, onClose, onSave, classes, defaultVisit = false }) 
 
 export default function KasusPage() {
   const { classes } = useSettings()
-  const { kasus, setKasus } = useData()
+  const { kasus, siswa, refreshData } = useData()
   const [activeTab, setActiveTab] = useState('kasus') // kasus, homevisit
   const [searchTerm, setSearchTerm] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [defaultVisitCheck, setDefaultVisitCheck] = useState(false)
 
-  const handleSaveKasus = (form) => {
-    const newKasus = {
-      id: Date.now(),
-      ...form,
-      date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+  const handleSaveKasus = async (form) => {
+    // Find student ID
+    const student = siswa.find(s => s.nama === form.siswa)
+    if (!student) return toast.error("Siswa tidak ditemukan. Harap pastikan nama sesuai daftar.")
+
+    try {
+      await api.post('/records', {
+        student_id: student.id,
+        kasus: form.kasus,
+        poin: form.poin,
+        status: form.status,
+        visit: form.visit,
+        date: new Date().toISOString().split('T')[0]
+      })
+      
+      refreshData()
+      setModalOpen(false)
+      toast.success('Data Kasus Kedisiplinan berhasil disimpan!')
+    } catch (err) {
+      toast.error('Gagal menyimpan data kasus.')
     }
-    setKasus([newKasus, ...kasus])
-    setModalOpen(false)
-    toast.success('Data Kasus Kedisiplinan berhasil disimpan!')
   }
 
   const openAddModal = (withVisit = false) => {

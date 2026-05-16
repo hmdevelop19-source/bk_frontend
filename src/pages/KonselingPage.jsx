@@ -8,6 +8,7 @@ import SignatureCanvas from 'react-signature-canvas'
 import toast from 'react-hot-toast'
 import { useSettings } from '../contexts/SettingsContext'
 import { useData } from '../contexts/DataContext'
+import api from '../lib/axios'
 
 const STATUS_CLS = {
   'Selesai': 'badge bg-teal-500/20 text-teal-300 border border-teal-500/30',
@@ -23,7 +24,7 @@ const JENIS_CLS = {
 export default function KonselingPage() {
   const [activeTab, setActiveTab] = useState('semua')
   const [showForm, setShowForm] = useState(false)
-  const { sessions, setSessions } = useData()
+  const { sessions, siswa, refreshData } = useData()
   const tabs = ['semua', 'terjadwal', 'proses', 'selesai']
   
   // Signature ref
@@ -40,28 +41,35 @@ export default function KonselingPage() {
     if (sigCanvas.current) sigCanvas.current.clear()
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!skipSignature && sigCanvas.current.isEmpty()) {
       return toast.error("Harap masukkan tanda tangan siswa sebagai validasi jurnal atau centang 'Lewati Tanda Tangan'.");
     }
 
-    const newSession = {
-      id: sessions.length + 1,
-      siswa: formData.siswa,
-      kelas: formData.kelas || 'XII',
-      tanggal: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
-      topik: formData.topik,
-      jenis: formData.jenis,
-      status: 'Selesai',
-      durasi: '30 mnt',
-      signature: !skipSignature
-    }
+    // Find student ID if possible, otherwise use a placeholder or create one
+    // For now, let's just use the first student as a fallback or assume the user selects one
+    const student = siswa.find(s => s.nama === formData.siswa)
+    if (!student) return toast.error("Siswa tidak ditemukan. Harap pilih dari daftar.");
 
-    setSessions([newSession, ...sessions])
-    setShowForm(false)
-    setFormData({ siswa: '', kelas: classes?.[0] || '', topik: '', jenis: 'Individu', ringkasan: '' })
-    toast.success("Jurnal Konseling Berhasil Disimpan! Digital signature terekam.");
+    try {
+      await api.post('/sessions', {
+        student_id: student.id,
+        tanggal: new Date().toISOString().split('T')[0],
+        topik: formData.topik,
+        jenis: formData.jenis,
+        status: 'Selesai',
+        durasi: '30 mnt',
+        signature: !skipSignature
+      })
+      
+      refreshData()
+      setShowForm(false)
+      setFormData({ siswa: '', kelas: classes?.[0] || '', topik: '', jenis: 'Individu', ringkasan: '' })
+      toast.success("Jurnal Konseling Berhasil Disimpan! Digital signature terekam.");
+    } catch (err) {
+      toast.error("Gagal menyimpan jurnal konseling.");
+    }
   }
 
   const filtered = activeTab === 'semua'

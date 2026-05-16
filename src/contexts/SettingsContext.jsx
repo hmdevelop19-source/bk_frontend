@@ -1,38 +1,56 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import api from '../lib/axios'
+import toast from 'react-hot-toast'
 
 const SettingsContext = createContext()
 
 const DEFAULT_CLASSES = ['X IPA 1', 'X IPA 2', 'X IPS 1', 'XI IPA 1', 'XI IPA 2', 'XI IPS 3', 'XII IPA 1', 'XII IPS 2']
 
 export function SettingsProvider({ children }) {
-  const [classes, setClasses] = useState(() => {
-    const saved = localStorage.getItem('simbk_classes')
-    return saved ? JSON.parse(saved) : DEFAULT_CLASSES
+  const [classes, setClasses] = useState(DEFAULT_CLASSES)
+  const [sekolah, setSekolah] = useState({
+    nama: '',
+    npsn: '',
+    alamat: '',
+    kepsek: '',
+    nip_kepsek: '',
+    logo: null,
+    ttd: null,
   })
 
-  const [sekolah, setSekolah] = useState(() => {
-    const saved = localStorage.getItem('simbk_sekolah')
-    return saved ? JSON.parse(saved) : {
-      nama: '',
-      npsn: '',
-      alamat: '',
-      kepsek: '',
-      nip_kepsek: '',
-      logo: null,
-      ttd: null,
+  const fetchSettings = async () => {
+    try {
+      const res = await api.get('/settings')
+      if (res.data) {
+        if (res.data.classes) {
+          setClasses(typeof res.data.classes === 'string' ? JSON.parse(res.data.classes) : res.data.classes)
+        }
+        if (res.data.sekolah) {
+          setSekolah(typeof res.data.sekolah === 'string' ? JSON.parse(res.data.sekolah) : res.data.sekolah)
+        }
+      }
+    } catch (err) {
+      console.error('Gagal mengambil pengaturan:', err)
     }
-  })
+  }
+
+  const updateSettings = async (key, value) => {
+    try {
+      await api.post('/settings', { [key]: value })
+      if (key === 'classes') setClasses(value)
+      if (key === 'sekolah') setSekolah(value)
+      toast.success('Pengaturan berhasil disimpan')
+    } catch (err) {
+      toast.error('Gagal menyimpan pengaturan')
+    }
+  }
 
   useEffect(() => {
-    localStorage.setItem('simbk_classes', JSON.stringify(classes))
-  }, [classes])
-
-  useEffect(() => {
-    localStorage.setItem('simbk_sekolah', JSON.stringify(sekolah))
-  }, [sekolah])
+    fetchSettings()
+  }, [])
 
   return (
-    <SettingsContext.Provider value={{ classes, setClasses, sekolah, setSekolah }}>
+    <SettingsContext.Provider value={{ classes, setClasses: (v) => updateSettings('classes', v), sekolah, setSekolah: (v) => updateSettings('sekolah', v) }}>
       {children}
     </SettingsContext.Provider>
   )
